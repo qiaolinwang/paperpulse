@@ -49,6 +49,18 @@ jobs:
         mkdir -p web/public/static/digests
         
     - name: Run PaperPulse Agent
+      env:
+        SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+        FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
+        FROM_NAME: ${{ env.FROM_NAME }}
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        DIGEST_OUTPUT_DIR: web/public/static/digests
+        MAX_PAPERS_PER_KEYWORD: ${{ env.MAX_PAPERS_PER_KEYWORD }}
+        DEFAULT_SUMMARY_MODEL: ${{ env.DEFAULT_SUMMARY_MODEL }}
       run: |
         cd agent
         python -m paperpulse.main
@@ -79,7 +91,7 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add web/public/static/digests/
+        git add -f web/public/static/digests/
         if git diff --staged --quiet; then
           echo "No changes to commit"
         else
