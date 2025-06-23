@@ -16,9 +16,13 @@ class ArxivClient:
     def search_papers(self, keyword: str, days_back: int = 3) -> List[Dict]:
         """Search arXiv for papers matching keyword in title OR abstract from the last N days"""
         try:
-            # For multi-word keywords, use quotes for exact phrase matching
+            # Improve search strategy for better results
             if " " in keyword:
+                # For multi-word keywords, use quotes for exact phrase matching
                 search_query = f'ti:"{keyword}" OR abs:"{keyword}"'
+            elif keyword.lower() == "ai":
+                # "AI" is too generic, search for more specific AI terms
+                search_query = f'(ti:"artificial intelligence" OR abs:"artificial intelligence" OR ti:"AI model" OR abs:"AI model" OR ti:"AI system" OR abs:"AI system")'
             else:
                 search_query = f"ti:{keyword} OR abs:{keyword}"
             

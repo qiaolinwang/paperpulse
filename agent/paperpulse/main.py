@@ -94,7 +94,7 @@ class PaperPulseAgent:
         
         for keyword in keywords:
             try:
-                papers = self.arxiv_client.search_papers(keyword, days_back=1)
+                papers = self.arxiv_client.search_papers(keyword, days_back=7)
                 papers_dict[keyword] = papers
             except Exception as e:
                 logger.error(f"Failed to fetch papers for keyword '{keyword}': {e}")
