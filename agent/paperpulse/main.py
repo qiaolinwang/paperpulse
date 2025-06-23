@@ -92,12 +92,19 @@ class PaperPulseAgent:
         """Fetch papers for given keywords"""
         papers_dict = defaultdict(list)
         
-        for keyword in keywords:
+        for i, keyword in enumerate(keywords, 1):
             try:
+                logger.info(f"📄 Fetching papers for keyword {i}/{len(keywords)}: '{keyword}'")
                 papers = self.arxiv_client.search_papers(keyword, days_back=7)
                 papers_dict[keyword] = papers
+                logger.info(f"✅ Found {len(papers)} papers for '{keyword}'")
+                
+                # Add delay between requests to avoid rate limiting
+                import time
+                time.sleep(1)
+                
             except Exception as e:
-                logger.error(f"Failed to fetch papers for keyword '{keyword}': {e}")
+                logger.error(f"❌ Failed to fetch papers for keyword '{keyword}': {e}")
                 papers_dict[keyword] = []
         
         return dict(papers_dict)
@@ -263,7 +270,11 @@ class PaperPulseAgent:
         all_keywords = list(set(kw for sub in subscribers for kw in sub.keywords))
         logger.info(f"🔍 Fetching papers for keywords: {', '.join(all_keywords[:5])}{'...' if len(all_keywords) > 5 else ''}")
         
-        papers_dict = self.fetch_papers_for_keywords(all_keywords)
+        try:
+            papers_dict = self.fetch_papers_for_keywords(all_keywords)
+        except Exception as e:
+            logger.error(f"Failed to fetch papers: {e}")
+            papers_dict = {}
         
         # Collect all unique papers
         all_papers = []
