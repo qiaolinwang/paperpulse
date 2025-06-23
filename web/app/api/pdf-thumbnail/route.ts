@@ -169,20 +169,68 @@ async function generatePDFThumbnail(pdfUrl: string): Promise<string | null> {
     // 这个服务可以对PDF URL进行截图
     const screenshotServices = [
       // 方案1: 使用更大的截图尺寸，然后裁剪掉工具栏部分
-      `https://api.s-shot.ru/1200x900/PNG/1200/PNG/?${encodeURIComponent(pdfUrl)}`,
+      `https://mini.s-shot.ru/1200x900/PNG/1200/PNG/?${encodeURIComponent(pdfUrl)}`,
       
+      // 方案2: 使用Google Docs嵌入式查看器，去掉工具栏
+      `https://mini.s-shot.ru/1024x768/PNG/1024/PNG/?${encodeURIComponent(`https://docs.google.com/viewer?url=${encodeURIComponent(pdfUrl)}&embedded=true`)}`,
+      
+      // 方案3: 使用延迟截图，等待PDF加载
+      `https://image.thum.io/get/width/600/crop/800/wait/3000/${encodeURIComponent(pdfUrl)}`,
+      
+      // 方案4: 使用PDF.js查看器，更干净的显示
+      `https://mini.s-shot.ru/800x1000/PNG/800/PNG/?${encodeURIComponent(`https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(pdfUrl)}`)}`,
     ]
 
-    // 直接使用截图服务，不验证（避免IP被封）
-    const primaryService = screenshotServices[0]
-    console.log('Using screenshot service without verification:', primaryService)
+    // 尝试不同的截图策略
+    for (const serviceUrl of screenshotServices) {
+      try {
+        console.log('Trying screenshot service:', serviceUrl)
+        
+        // 对于screenshot服务，我们直接返回URL
+        // 优先使用Google Docs嵌入式查看器，因为它没有工具栏
+        if (serviceUrl.includes('docs.google.com/viewer') && serviceUrl.includes('embedded=true')) {
+          console.log('Using Google Docs embedded viewer:', serviceUrl)
+          return serviceUrl
+        }
+        
+        // 其次使用带延迟的截图服务
+        if (serviceUrl.includes('wait/3000')) {
+          console.log('Using delayed screenshot service:', serviceUrl)
+          return serviceUrl
+        }
+        
+        // 最后使用直接PDF截图
+        if (serviceUrl.includes('mini.s-shot.ru') || serviceUrl.includes('thum.io')) {
+          console.log('Using direct screenshot service:', serviceUrl)
+          return serviceUrl
+        }
+        
+        const response = await fetch(serviceUrl, { 
+          method: 'HEAD',
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          }
+        })
+        
+        if (response.ok) {
+          const contentType = response.headers.get('content-type')
+          if (contentType && contentType.includes('image')) {
+            console.log('Successfully generated thumbnail with service:', serviceUrl)
+            return serviceUrl
+          }
+        }
+      } catch (error) {
+        console.log(`Screenshot service failed: ${serviceUrl}`, error)
+        continue
+      }
+    }
+
+    // 最后的fallback: 使用一个简单的占位符图片服务
+    // 这会生成一个显示PDF信息的图片
+    const fallbackUrl = `https://via.placeholder.com/400x500/f3f4f6/374151?text=${encodeURIComponent('PDF Preview')}`
     
-    // 添加随机参数避免缓存和检测
-    const timestamp = Date.now()
-    const randomParam = Math.random().toString(36).substring(7)
-    const finalUrl = `${primaryService}&t=${timestamp}&r=${randomParam}`
-    
-    return finalUrl
+    console.log('Using fallback placeholder image')
+    return fallbackUrl
 
   } catch (error) {
     console.error('All thumbnail services failed:', error)

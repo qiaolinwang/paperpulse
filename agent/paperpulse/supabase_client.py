@@ -1,13 +1,7 @@
-"""
-Supabase client for PaperPulse Agent
-Handles database operations for subscriptions, papers, and digests
-"""
-
 import os
-import json
 import logging
-from typing import List, Dict, Optional
-from datetime import datetime, date
+from typing import List, Optional, Dict, Any
+from datetime import date, datetime
 from dataclasses import dataclass
 from supabase import create_client, Client
 
@@ -18,204 +12,175 @@ class SupabaseSubscription:
     id: str
     email: str
     keywords: List[str]
-    digest_time: str
-    max_papers: int
-    summary_model: str
-    tone: str
-    include_pdf_link: bool
-    active: bool
+    digest_time: str = "13:00"
+    max_papers: int = 20
+    summary_model: str = "llama-3.1-8b-instant-groq"
+    tone: str = "concise"
+    include_pdf_link: bool = True
+    active: bool = True
     user_id: Optional[str] = None
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
 
 class SupabaseClient:
     def __init__(self):
-        self.url = os.getenv("SUPABASE_URL")
-        self.service_key = os.getenv("SUPABASE_SERVICE_KEY")
+        url = os.getenv("SUPABASE_URL")
+        key = os.getenv("SUPABASE_SERVICE_KEY")
         
-        if not self.url or not self.service_key:
-            raise ValueError("SUPABASE_URL and SUPABASE_SERVICE_KEY environment variables are required")
+        if not url or not key:
+            raise ValueError("SUPABASE_URL and SUPABASE_SERVICE_KEY must be set")
         
+        self.client: Client = create_client(url, key)
+        logger.info("Supabase client initialized")
+    
+    def test_connection(self) -> bool:
+        """Test database connection"""
         try:
-            self.client: Client = create_client(self.url, self.service_key)
-            logger.info("✅ Supabase client initialized")
+            response = self.client.table('subscriptions').select("count").execute()
+            logger.info("✅ Supabase connection successful")
+            return True
         except Exception as e:
-            logger.error(f"Failed to create Supabase client: {e}")
-            raise
+            logger.error(f"❌ Supabase connection failed: {e}")
+            return False
     
     def get_active_subscriptions(self) -> List[SupabaseSubscription]:
-        """Get all active subscriptions from Supabase"""
+        """Get all active subscriptions from database"""
         try:
-            response = self.client.table('subscriptions').select('*').eq('active', True).execute()
+            response = self.client.table('subscriptions').select("*").eq('active', True).execute()
             
             subscriptions = []
             for row in response.data:
+                # Handle keywords as either JSONB array or text array
+                keywords = row['keywords']
+                if isinstance(keywords, str):
+                    # If it's a JSON string, parse it
+                    import json
+                    try:
+                        keywords = json.loads(keywords)
+                    except:
+                        keywords = [keywords]  # Fallback to single keyword
+                elif not isinstance(keywords, list):
+                    keywords = []
+                
                 subscription = SupabaseSubscription(
                     id=row['id'],
-                    email=row['email'] or '',  # Handle NULL emails for user-based subscriptions
-                    keywords=row['keywords'] if isinstance(row['keywords'], list) else [],
-                    digest_time=row['digest_time'],
-                    max_papers=row['max_papers'],
-                    summary_model=row['summary_model'],
-                    tone=row['tone'],
-                    include_pdf_link=row['include_pdf_link'],
-                    active=row['active'],
-                    user_id=row.get('user_id'),
-                    created_at=row.get('created_at'),
-                    updated_at=row.get('updated_at')
+                    email=row['email'],
+                    keywords=keywords,
+                    digest_time=row.get('digest_time', '13:00'),
+                    max_papers=row.get('max_papers', 20),
+                    summary_model=row.get('summary_model', 'llama-3.1-8b-instant-groq'),
+                    tone=row.get('tone', 'concise'),
+                    include_pdf_link=row.get('include_pdf_link', True),
+                    active=row.get('active', True),
+                    user_id=row.get('user_id')
                 )
-                
-                # For user-based subscriptions, get email from users table
-                if subscription.user_id and not subscription.email:
-                    user_response = self.client.table('users').select('email').eq('id', subscription.user_id).single().execute()
-                    if user_response.data:
-                        subscription.email = user_response.data['email']
-                
-                if subscription.email:  # Only include subscriptions with valid email
-                    subscriptions.append(subscription)
+                subscriptions.append(subscription)
             
-            logger.info(f"📧 Found {len(subscriptions)} active subscriptions")
+            logger.info(f"📧 Loaded {len(subscriptions)} active subscriptions from Supabase")
             return subscriptions
             
         except Exception as e:
-            logger.error(f"❌ Failed to fetch subscriptions: {e}")
+            logger.error(f"Failed to load subscriptions from Supabase: {e}")
             return []
     
     def save_papers(self, papers: List[Dict]) -> bool:
-        """Save papers to Supabase"""
+        """Save papers to database"""
         try:
             # Prepare papers for database insertion
-            db_papers = []
+            paper_data = []
             for paper in papers:
-                db_paper = {
-                    'id': paper['id'],
+                # Match your existing schema - id is TEXT, authors/categories are JSONB
+                paper_record = {
+                    'id': paper['id'],  # TEXT primary key (arxiv ID)
                     'title': paper['title'],
                     'abstract': paper['abstract'],
-                    'authors': paper['authors'],
-                    'published': paper['published'],
+                    'authors': paper['authors'],  # Already a list, will be stored as JSONB
+                    'published': paper['published'],  # Note: column is 'published' not 'published_date'
+                    'categories': paper['categories'],  # Already a list, will be stored as JSONB
                     'url': paper['url'],
                     'pdf_url': paper['pdf_url'],
-                    'categories': paper.get('categories', []),
                     'summary': paper.get('summary'),
+                    'keywords_matched': paper.get('keywords_matched', [])
                 }
-                db_papers.append(db_paper)
+                
+                # Add arxiv_id if the column exists
+                paper_record['arxiv_id'] = paper['id']
+                
+                paper_data.append(paper_record)
             
-            # Use upsert to handle duplicates
-            response = self.client.table('papers').upsert(db_papers).execute()
+            # Upsert papers (insert or update if exists)
+            response = self.client.table('papers').upsert(
+                paper_data, 
+                on_conflict='id'  # Using id as the conflict column
+            ).execute()
             
-            logger.info(f"💾 Saved {len(db_papers)} papers to database")
+            logger.info(f"💾 Saved {len(paper_data)} papers to database")
             return True
             
         except Exception as e:
-            logger.error(f"❌ Failed to save papers: {e}")
+            logger.error(f"Failed to save papers to database: {e}")
             return False
     
     def save_digest_history(self, date: date, paper_ids: List[str]) -> bool:
         """Save daily digest history"""
         try:
-            digest_data = {
+            digest_record = {
                 'date': date.isoformat(),
-                'papers': paper_ids
+                'paper_count': len(paper_ids),
+                'paper_ids': paper_ids,
+                'generated_at': datetime.now().isoformat()
             }
             
-            response = self.client.table('digest_history').upsert([digest_data]).execute()
+            response = self.client.table('digest_history').upsert(
+                [digest_record],
+                on_conflict='date'
+            ).execute()
             
             logger.info(f"📅 Saved digest history for {date}")
             return True
             
         except Exception as e:
-            logger.error(f"❌ Failed to save digest history: {e}")
+            logger.error(f"Failed to save digest history: {e}")
             return False
     
-    def get_digest_history(self, date: date) -> Optional[Dict]:
-        """Get digest history for a specific date"""
+    def save_user_digest(
+        self,
+        email: str,
+        date: date,
+        keywords: List[str],
+        papers: List[Dict],
+        sent_at: datetime,
+        success: bool,
+        error_message: Optional[str] = None,
+        user_id: Optional[str] = None
+    ) -> bool:
+        """Save user's personalized digest record"""
         try:
-            response = self.client.table('digest_history').select('*').eq('date', date.isoformat()).single().execute()
-            
-            if response.data:
-                return response.data
-            return None
-            
-        except Exception as e:
-            logger.error(f"❌ Failed to get digest history for {date}: {e}")
-            return None
-    
-    def update_subscription_status(self, subscription_id: str, active: bool) -> bool:
-        """Update subscription active status"""
-        try:
-            response = self.client.table('subscriptions').update({'active': active}).eq('id', subscription_id).execute()
-            
-            logger.info(f"📝 Updated subscription {subscription_id} status to {active}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"❌ Failed to update subscription status: {e}")
-            return False
-    
-    def test_connection(self) -> bool:
-        """Test Supabase connection"""
-        try:
-            # Simple query to test connection
-            response = self.client.table('subscriptions').select('count').execute()
-            logger.info("✅ Supabase connection test successful")
-            return True
-            
-        except Exception as e:
-            logger.error(f"❌ Supabase connection test failed: {e}")
-            return False
-    
-    def save_user_digest(self, email: str, date: date, keywords: List[str], 
-                        papers: List[Dict], sent_at: datetime, success: bool, 
-                        error_message: str = None, user_id: str = None) -> bool:
-        """Save user's personalized digest history"""
-        try:
-            paper_ids = [paper['id'] for paper in papers]
-            
-            digest_data = {
-                'user_id': user_id,
+            digest_record = {
                 'email': email,
                 'date': date.isoformat(),
                 'keywords': keywords,
-                'papers': paper_ids,
-                'papers_count': len(papers),
+                'paper_count': len(papers),
+                'papers': papers,
                 'sent_at': sent_at.isoformat(),
                 'success': success,
-                'error_message': error_message
+                'error_message': error_message,
+                'user_id': user_id
             }
             
-            # Use upsert to handle duplicates (same email + date)
-            response = self.client.table('user_digests').upsert([digest_data]).execute()
+            response = self.client.table('user_digests').insert([digest_record]).execute()
             
-            logger.info(f"💾 Saved user digest for {email}: {len(papers)} papers")
+            status = "✅" if success else "❌"
+            logger.info(f"{status} Saved user digest record for {email}")
             return True
             
         except Exception as e:
-            logger.error(f"❌ Failed to save user digest for {email}: {e}")
+            logger.error(f"Failed to save user digest: {e}")
             return False
     
-    def get_user_digest_history(self, email: str, days: int = 7) -> List[Dict]:
-        """Get user's digest history for the last N days"""
+    def get_user_digest_history(self, email: str, limit: int = 30) -> List[Dict]:
+        """Get user's digest history"""
         try:
-            from datetime import timedelta
-            start_date = (date.today() - timedelta(days=days)).isoformat()
-            
-            response = self.client.table('user_digests').select('*').eq('email', email).gte('date', start_date).order('date', desc=True).execute()
-            
+            response = self.client.table('user_digests').select("*").eq('email', email).order('date', desc=True).limit(limit).execute()
             return response.data
-            
         except Exception as e:
-            logger.error(f"❌ Failed to get user digest history for {email}: {e}")
+            logger.error(f"Failed to get user digest history: {e}")
             return []
-    
-    def get_user_papers_for_date(self, email: str, target_date: date) -> List[str]:
-        """Get paper IDs that were sent to a specific user on a specific date"""
-        try:
-            response = self.client.table('user_digests').select('papers').eq('email', email).eq('date', target_date.isoformat()).single().execute()
-            
-            if response.data:
-                return response.data.get('papers', [])
-            return []
-            
-        except Exception as e:
-            logger.error(f"❌ Failed to get user papers for {email} on {target_date}: {e}")
-            return [] 

@@ -1,219 +1,233 @@
-# PaperPulse v2.0 Supabase Setup Guide
+# 📚 PaperPulse Supabase Setup Guide
 
-## 🚀 Quick Start with Supabase
+This guide will help you set up the Supabase database for PaperPulse v2.0.
 
-PaperPulse v2.0 uses Supabase for authentication and database management. Follow this guide to set up your Supabase project.
+## 🚀 Quick Setup
 
-### 1. Create a Supabase Project
+### 1. Create Supabase Project
 
-1. Go to [supabase.com](https://supabase.com)
-2. Sign in or create an account
-3. Click "New Project"
-4. Choose your organization
-5. Set project name: `paperpulse-v2`
-6. Set database password (save this!)
-7. Choose a region close to your users
-8. Click "Create new project"
+1. Go to [supabase.com](https://supabase.com) and create a new project
+2. Choose a database password and region
+3. Wait for the project to be ready (~2 minutes)
 
-### 2. Get Your Project Credentials
+### 2. Get Your Credentials
 
-Once your project is created:
+In your Supabase dashboard:
 
 1. Go to **Settings** → **API**
-2. Copy the following values:
-   - **Project URL**: `https://your-project-ref.supabase.co`
-   - **Anon (public) key**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
-   - **Service role key**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` (keep this secret!)
+2. Copy these values:
+   - **Project URL** (anon key section)
+   - **anon/public key** (for frontend)
+   - **service_role key** (for backend/agent)
 
-### 3. Set Up Environment Variables
+### 3. Run Database Schema
 
-Create a `.env.local` file in the `web/` directory:
+Go to **SQL Editor** in your Supabase dashboard and run this schema:
 
-```bash
-# Supabase Configuration
-NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
+```sql
+-- Enable necessary extensions
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
-# Optional: For server-side operations
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
+-- Users table (handled by Supabase Auth automatically)
+-- We'll reference auth.users for user management
 
-# Next.js Configuration
-NEXT_PUBLIC_BASE_URL=http://localhost:3000
+-- Subscriptions table
+CREATE TABLE subscriptions (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    keywords TEXT[] NOT NULL,
+    digest_time TEXT DEFAULT '13:00',
+    max_papers INTEGER DEFAULT 20,
+    summary_model TEXT DEFAULT 'llama-3.1-8b-instant-groq',
+    tone TEXT DEFAULT 'concise',
+    include_pdf_link BOOLEAN DEFAULT true,
+    active BOOLEAN DEFAULT true,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Papers table
+CREATE TABLE papers (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    arxiv_id TEXT NOT NULL UNIQUE,
+    title TEXT NOT NULL,
+    abstract TEXT NOT NULL,
+    authors TEXT[] NOT NULL,
+    published_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    categories TEXT[] NOT NULL,
+    url TEXT NOT NULL,
+    pdf_url TEXT NOT NULL,
+    summary TEXT,
+    keywords_matched TEXT[],
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Digest history table (daily digest records)
+CREATE TABLE digest_history (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    date DATE NOT NULL UNIQUE,
+    paper_count INTEGER NOT NULL,
+    paper_ids TEXT[] NOT NULL,
+    generated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- User digests table (personalized digest records)
+CREATE TABLE user_digests (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    email TEXT NOT NULL,
+    date DATE NOT NULL,
+    keywords TEXT[] NOT NULL,
+    paper_count INTEGER NOT NULL,
+    papers JSONB NOT NULL,
+    sent_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    success BOOLEAN NOT NULL,
+    error_message TEXT,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(email, date)
+);
+
+-- User bookmarks table
+CREATE TABLE user_bookmarks (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    paper_id UUID REFERENCES papers(id) ON DELETE CASCADE NOT NULL,
+    bookmarked_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id, paper_id)
+);
+
+-- User ratings table
+CREATE TABLE user_ratings (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    paper_id UUID REFERENCES papers(id) ON DELETE CASCADE NOT NULL,
+    rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+    rated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id, paper_id)
+);
+
+-- Create indexes for better performance
+CREATE INDEX idx_subscriptions_email ON subscriptions(email);
+CREATE INDEX idx_subscriptions_active ON subscriptions(active);
+CREATE INDEX idx_papers_arxiv_id ON papers(arxiv_id);
+CREATE INDEX idx_papers_published_date ON papers(published_date);
+CREATE INDEX idx_papers_categories ON papers USING GIN(categories);
+CREATE INDEX idx_digest_history_date ON digest_history(date);
+CREATE INDEX idx_user_digests_email_date ON user_digests(email, date);
+CREATE INDEX idx_user_bookmarks_user_id ON user_bookmarks(user_id);
+CREATE INDEX idx_user_ratings_user_id ON user_ratings(user_id);
+
+-- Create updated_at trigger function
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Add updated_at trigger to subscriptions
+CREATE TRIGGER update_subscriptions_updated_at 
+    BEFORE UPDATE ON subscriptions 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Row Level Security (RLS) policies
+ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_digests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_bookmarks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_ratings ENABLE ROW LEVEL SECURITY;
+
+-- Policies for subscriptions (users can only see/modify their own)
+CREATE POLICY "Users can view own subscriptions" ON subscriptions
+    FOR SELECT USING (auth.uid() = user_id OR auth.uid() IS NULL);
+
+CREATE POLICY "Users can insert own subscriptions" ON subscriptions
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own subscriptions" ON subscriptions
+    FOR UPDATE USING (auth.uid() = user_id);
+
+-- Policies for user_digests (users can only see their own)
+CREATE POLICY "Users can view own digests" ON user_digests
+    FOR SELECT USING (auth.uid() = user_id);
+
+-- Policies for user_bookmarks
+CREATE POLICY "Users can manage own bookmarks" ON user_bookmarks
+    FOR ALL USING (auth.uid() = user_id);
+
+-- Policies for user_ratings
+CREATE POLICY "Users can manage own ratings" ON user_ratings
+    FOR ALL USING (auth.uid() = user_id);
+
+-- Allow public read access to papers and digest_history
+CREATE POLICY "Papers are publicly readable" ON papers
+    FOR SELECT TO anon, authenticated USING (true);
+
+CREATE POLICY "Digest history is publicly readable" ON digest_history
+    FOR SELECT TO anon, authenticated USING (true);
+
+-- Service role can do everything (for the agent)
+CREATE POLICY "Service role full access" ON subscriptions
+    FOR ALL TO service_role USING (true);
+
+CREATE POLICY "Service role full access" ON papers
+    FOR ALL TO service_role USING (true);
+
+CREATE POLICY "Service role full access" ON digest_history
+    FOR ALL TO service_role USING (true);
+
+CREATE POLICY "Service role full access" ON user_digests
+    FOR ALL TO service_role USING (true);
 ```
 
-### 4. Run the Database Schema
+### 4. Environment Variables
 
-1. Go to **SQL Editor** in your Supabase dashboard
-2. Copy the contents of `web/supabase/schema.sql`
-3. Paste it into the SQL editor
-4. Click "Run"
+Add these to your GitHub Actions secrets:
 
-This will create all the necessary tables, policies, and triggers.
+- `SUPABASE_URL` - Your project URL
+- `SUPABASE_SERVICE_KEY` - Your service role key  
+- `GROQ_API_KEY` - Your Groq API key
+- `FROM_EMAIL` - Email sender address
 
-### 5. Configure Authentication
+## 🧪 Testing
 
-#### Enable Email Authentication
-
-1. Go to **Authentication** → **Settings**
-2. Under **Auth Providers**, enable **Email**
-3. Configure email templates (optional)
-
-#### Enable Google OAuth (Optional)
-
-1. Go to **Authentication** → **Settings**
-2. Under **Auth Providers**, enable **Google**
-3. Add your Google OAuth credentials:
-   - **Client ID**: Your Google Client ID
-   - **Client Secret**: Your Google Client Secret
-
-To get Google OAuth credentials:
-1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Create a new project or select existing
-3. Enable Google+ API
-4. Create OAuth 2.0 credentials
-5. Add authorized redirect URIs:
-   - `https://your-project-ref.supabase.co/auth/v1/callback`
-   - `http://localhost:3000/auth/callback` (for development)
-
-### 6. Configure Row Level Security (RLS)
-
-The schema automatically sets up RLS policies, but verify they're working:
-
-1. Go to **Authentication** → **Policies**
-2. You should see policies for:
-   - `users` table
-   - `subscriptions` table
-   - `user_papers` table
-   - `papers` table (public read)
-   - `digest_history` table (public read)
-
-### 7. Test the Setup
-
-1. Start your Next.js development server:
-   ```bash
-   cd web
-   npm run dev
-   ```
-
-2. Visit `http://localhost:3000`
-3. Try signing up with email or Google
-4. Check the Supabase **Authentication** → **Users** tab to see if the user was created
-5. Check the **Table Editor** to see if a user record and default subscription were created
-
-### 8. Production Setup
-
-For production deployment:
-
-1. Update your `.env.local` with production URLs
-2. Add your production domain to Supabase **Authentication** → **Settings** → **Site URL**
-3. Add production redirect URLs to Google OAuth (if using)
-4. Set up proper email configuration for auth emails
-
-## 🗄️ Database Schema Overview
-
-The database includes these main tables:
-
-- **users**: User profiles (extends Supabase auth.users)
-- **subscriptions**: User preferences and keywords
-- **papers**: Research papers from arXiv
-- **user_papers**: User interactions (bookmarks, ratings)
-- **digest_history**: Daily digest archives
-
-## 🔐 Security Features
-
-- **Row Level Security (RLS)**: Users can only access their own data
-- **Service Role Protection**: Only the backend can manage papers and digests
-- **Email Verification**: Required for new accounts
-- **OAuth Integration**: Secure Google sign-in
-
-## 🛠️ Development Tips
-
-### Useful Supabase CLI Commands
-
+### Test Agent Connection
 ```bash
-# Install Supabase CLI
-npm install -g supabase
-
-# Login to Supabase
-supabase login
-
-# Link to your project
-supabase link --project-ref your-project-ref
-
-# Generate TypeScript types
-supabase gen types typescript --project-id your-project-ref > types/supabase.ts
+cd agent
+python -c "
+import os
+from dotenv import load_dotenv
+load_dotenv()
+from paperpulse.supabase_client import SupabaseClient
+client = SupabaseClient()
+print('✅ Connection successful!')
+subs = client.get_active_subscriptions()
+print(f'📧 Found {len(subs)} subscriptions')
+"
 ```
 
-### Database Migrations
+## 📊 Current Status
 
-For schema changes:
+**Issue:** Your GitHub Actions workflow is failing because:
+1. ✅ Secrets are configured correctly 
+2. ❌ Agent can't find subscriber data
+3. ❌ No Supabase database connection
 
-1. Make changes in Supabase dashboard
-2. Generate migration:
-   ```bash
-   supabase db diff --file migration_name
-   ```
-3. Apply migration:
-   ```bash
-   supabase db push
-   ```
+**Solution:** 
+1. Set up Supabase database with the schema above
+2. Add Supabase secrets to GitHub Actions
+3. Your existing subscribers in `subscribers.json` will be used as fallback
 
-### Local Development
+## 🔄 Migration Path
 
-You can run Supabase locally:
+1. **Immediate Fix:** Set up Supabase as described above
+2. **Test locally:** `cd agent && python -m paperpulse.main --dry-run`
+3. **Deploy:** Push changes and test GitHub Actions
+4. **Migrate data:** Your subscription API already writes to Supabase
 
-```bash
-supabase start
-supabase db reset
-```
-
-## 📧 Email Configuration
-
-For email authentication, you'll need an SMTP server. Options:
-
-1. **Gmail**: Use App Passwords with 2FA enabled
-2. **SendGrid**: Professional email service
-3. **Resend**: Modern email API (recommended)
-
-Add to your `.env.local`:
-
-```bash
-EMAIL_SERVER_HOST=smtp.gmail.com
-EMAIL_SERVER_PORT=587
-EMAIL_SERVER_USER=your_email@gmail.com
-EMAIL_SERVER_PASSWORD=your_app_password
-EMAIL_FROM=noreply@paperpulse.ai
-```
-
-## 🚨 Troubleshooting
-
-### Common Issues
-
-1. **"Invalid JWT" errors**: Check your environment variables
-2. **RLS policy violations**: Ensure policies are set up correctly
-3. **Email auth not working**: Verify SMTP configuration
-4. **Google OAuth fails**: Check redirect URIs and credentials
-
-### Debug Commands
-
-```bash
-# Check environment variables
-echo $NEXT_PUBLIC_SUPABASE_URL
-
-# Test Supabase connection
-supabase projects list
-
-# View real-time logs
-supabase logs --level=info
-```
-
-## 🎯 Next Steps
-
-Once Supabase is set up:
-
-1. **Test Authentication**: Sign up/in with email and Google
-2. **Verify Database**: Check that user data is being created
-3. **Run the Agent**: Update the Python agent to use Supabase
-4. **Deploy**: Deploy both web app and agent to production
-
-Your PaperPulse v2.0 is now ready with a powerful authentication system and scalable database! 
+Your agent will automatically:
+- Try Supabase first (when secrets are set)
+- Fall back to JSON file if Supabase fails
+- Work with both data sources seamlessly
