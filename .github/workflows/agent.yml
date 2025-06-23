@@ -29,6 +29,7 @@ env:
 jobs:
   run-agent:
     runs-on: ubuntu-latest
+    environment: paperpulse  # Use the paperpulse environment where secrets are stored
     
     steps:
     - name: Checkout repository
