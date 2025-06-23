@@ -95,7 +95,7 @@ class PaperPulseAgent:
         for i, keyword in enumerate(keywords, 1):
             try:
                 logger.info(f"📄 Fetching papers for keyword {i}/{len(keywords)}: '{keyword}'")
-                papers = self.arxiv_client.search_papers(keyword, days_back=7)
+                papers = self.arxiv_client.search_papers(keyword, days_back=14)
                 papers_dict[keyword] = papers
                 logger.info(f"✅ Found {len(papers)} papers for '{keyword}'")
                 

@@ -16,13 +16,22 @@ class ArxivClient:
     def search_papers(self, keyword: str, days_back: int = 3) -> List[Dict]:
         """Search arXiv for papers matching keyword in title OR abstract from the last N days"""
         try:
-            # Improve search strategy for better results
-            if " " in keyword:
-                # For multi-word keywords, use quotes for exact phrase matching
-                search_query = f'ti:"{keyword}" OR abs:"{keyword}"'
-            elif keyword.lower() == "ai":
-                # "AI" is too generic, search for more specific AI terms
-                search_query = f'(ti:"artificial intelligence" OR abs:"artificial intelligence" OR ti:"AI model" OR abs:"AI model" OR ti:"AI system" OR abs:"AI system")'
+            # Use flexible search strategy for better results
+            if keyword.lower() == "chain of thought":
+                # More flexible search for reasoning papers
+                search_query = f'(ti:"chain of thought" OR ti:"reasoning" OR ti:"step by step" OR abs:"chain of thought" OR abs:"reasoning" OR abs:"step-by-step")'
+            elif keyword.lower() == "multimodal llm":
+                # Search for vision-language and multimodal papers
+                search_query = f'(ti:"multimodal" OR ti:"vision language" OR ti:"VLM" OR abs:"multimodal" OR abs:"vision-language" OR abs:"visual language")'
+            elif keyword.lower() == "large language model":
+                # Search for LLM papers with variations
+                search_query = f'(ti:"language model" OR ti:"LLM" OR ti:"transformer" OR abs:"language model" OR abs:"LLM")'
+            elif " " in keyword:
+                # For other multi-word keywords, use both exact and flexible matching
+                words = keyword.split()
+                exact_search = f'ti:"{keyword}" OR abs:"{keyword}"'
+                flexible_search = f'ti:{" AND ".join(words)} OR abs:{" AND ".join(words)}'
+                search_query = f'({exact_search} OR {flexible_search})'
             else:
                 search_query = f"ti:{keyword} OR abs:{keyword}"
             
