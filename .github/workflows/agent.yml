@@ -1,0 +1,90 @@
+name: PaperPulse Agent Daily Run
+
+on:
+  schedule:
+    # Run daily at 5:00 AM UTC (1:00 PM UTC delivery time - 8 hours processing buffer)
+    - cron: '0 5 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+env:
+  # Email Service
+  SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+  FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
+  FROM_NAME: PaperPulse
+  
+  # Supabase Database
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+  
+  # AI Summarization
+  GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  
+  # Agent Configuration
+  DIGEST_OUTPUT_DIR: ../web/public/static/digests
+  MAX_PAPERS_PER_KEYWORD: 50
+  DEFAULT_SUMMARY_MODEL: llama-3.1-8b-instant-groq
+
+jobs:
+  run-agent:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        cd agent
+        pip install -r requirements.txt
+        
+    - name: Create directories
+      run: |
+        mkdir -p web/public/static/digests
+        
+    - name: Run PaperPulse Agent
+      run: |
+        cd agent
+        python -m paperpulse.main
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Deploy digest files to Vercel
+      run: |
+        cd web
+        npm install -g vercel
+        # Copy generated digest files to static directory
+        if [ -d "public/static/digests" ] && [ "$(ls -A public/static/digests)" ]; then
+          echo "Digest files generated successfully"
+          # Deploy only the static files to update the website
+          vercel --prod --token ${{ secrets.VERCEL_TOKEN }} --confirm
+        else
+          echo "No digest files to deploy"
+        fi
+      env:
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        
+    - name: Commit and push digest files
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add web/public/static/digests/
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+        else
+          git commit -m "Add daily digest $(date +'%Y-%m-%d')"
+          git push
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

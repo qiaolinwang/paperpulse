@@ -1,0 +1,26 @@
+# Core dependencies
+requests==2.31.0
+email-validator==2.0.0
+click==8.1.7
+python-dotenv==1.0.0
+feedparser==6.0.10
+
+# Database (Supabase)
+supabase==1.0.4
+
+# Summarization providers (choose one or more)
+# OpenAI (free tier available)
+openai>=1.0.0
+
+# Anthropic Claude
+anthropic>=0.25.0
+
+# Groq (free tier: 14,400 requests/day)
+groq>=0.8.0
+
+# HuggingFace Transformers (completely free, local)
+transformers>=4.30.0
+torch>=2.0.0
+sentencepiece>=0.1.99
+
+# Note: For Ollama and Together AI, only 'requests' is needed (already included above)
