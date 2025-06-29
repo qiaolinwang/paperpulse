@@ -11,18 +11,16 @@ def test_search():
     client = ArxivClient(max_results=5)
     
     keywords = [
-        "machine learning",
-        "deep learning", 
-        "neural networks",
-        "transformer",
-        "AI"
+        "Speech LLM",
+        "Chain of Thought",
+        "Multimodal LLM"
     ]
     
     for keyword in keywords:
         print(f"\n🔍 Testing keyword: '{keyword}'")
         print("=" * 50)
         
-        papers = client.search_papers(keyword, days_back=7)
+        papers = client.search_papers(keyword, days_back=14)
         print(f"Found {len(papers)} papers")
         
         for i, paper in enumerate(papers[:3], 1):

@@ -70,7 +70,7 @@ class PaperPulseAgent:
                             email=sub["email"],
                             keywords=sub["keywords"],
                             digest_time=sub.get("digest_time_utc", "13:00"),
-                            max_papers=sub.get("max_papers", 20),
+                            max_papers=sub.get("max_papers", 100),
                             summary_model=sub.get("summary_model", "llama-3.1-8b-instant-groq"),
                             tone=sub.get("tone", "concise"),
                             include_pdf_link=sub.get("include_pdf_link", True),
@@ -289,7 +289,7 @@ class PaperPulseAgent:
         
         # Save daily digest
         if not dry_run:
-            self.save_daily_digest(all_papers[:50])
+            self.save_daily_digest(all_papers[:150])
         
         # Process subscribers
         results = []

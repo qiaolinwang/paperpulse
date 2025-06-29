@@ -6,7 +6,7 @@ class Subscriber(BaseModel):
     email: EmailStr
     keywords: List[str] = Field(min_items=1)
     digest_time_utc: str = "13:00"
-    max_papers: int = Field(default=20, ge=1, le=100)
+    max_papers: int = Field(default=100, ge=1, le=200)
     summary_model: str = "llama-3.1-8b-instant-groq"
     tone: str = Field(default="concise", pattern="^(concise|detailed|simple)$")
     include_pdf_link: bool = True

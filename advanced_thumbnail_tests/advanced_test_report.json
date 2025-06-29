@@ -1,0 +1,142 @@
+{
+  "testDate": "2025-06-23T22:58:51.716Z",
+  "testType": "Advanced Methods",
+  "summary": {
+    "totalPapers": 1,
+    "totalMethods": 12,
+    "methodSuccessRates": {
+      "Method A1: PDF to Image using CloudConvert API": {
+        "successes": 0,
+        "total": 1,
+        "rate": "0.0"
+      },
+      "Method A2: HTML Canvas with PDF.js Rendering": {
+        "successes": 0,
+        "total": 1,
+        "rate": "0.0"
+      },
+      "Method A3: Puppeteer via ScrapingBee": {
+        "successes": 0,
+        "total": 1,
+        "rate": "0.0"
+      },
+      "Method A4: PhantomJSCloud": {
+        "successes": 0,
+        "total": 1,
+        "rate": "0.0"
+      },
+      "Method A5: ShrinkTheWeb": {
+        "successes": 0,
+        "total": 1,
+        "rate": "0.0"
+      },
+      "Method A6: Web2PDFConvert Screenshot": {
+        "successes": 0,
+        "total": 1,
+        "rate": "0.0"
+      },
+      "Method A7: Capture Website": {
+        "successes": 0,
+        "total": 1,
+        "rate": "0.0"
+      },
+      "Method A8: Screenshot Layer": {
+        "successes": 0,
+        "total": 1,
+        "rate": "0.0"
+      },
+      "Method A9: PDFShift Screenshot": {
+        "successes": 0,
+        "total": 1,
+        "rate": "0.0"
+      },
+      "Method A10: ArXiv Abstract Page Screenshot": {
+        "successes": 0,
+        "total": 1,
+        "rate": "0.0"
+      },
+      "Method A11: PDF Thumbnail via Mozilla PDF.js Direct": {
+        "successes": 0,
+        "total": 1,
+        "rate": "0.0"
+      },
+      "Method A12: WeasyPrint HTML to PNG": {
+        "successes": 0,
+        "total": 1,
+        "rate": "0.0"
+      }
+    }
+  },
+  "detailedResults": [
+    {
+      "paper": {
+        "id": "2506.17218v1",
+        "title": "Machine Mental Imagery: Empower Multimodal Reasoning with Latent Visual Tokens",
+        "pdf_url": "https://arxiv.org/pdf/2506.17218v1.pdf"
+      },
+      "methodResults": [
+        {
+          "method": "Method A1: PDF to Image using CloudConvert API",
+          "success": false,
+          "error": "HTTP 404: Not Found"
+        },
+        {
+          "method": "Method A2: HTML Canvas with PDF.js Rendering",
+          "success": false,
+          "error": "Server-side implementation needed or not applicable"
+        },
+        {
+          "method": "Method A3: Puppeteer via ScrapingBee",
+          "success": false,
+          "error": "HTTP 401: UNAUTHORIZED"
+        },
+        {
+          "method": "Method A4: PhantomJSCloud",
+          "success": false,
+          "error": "HTTP 401: Unauthorized"
+        },
+        {
+          "method": "Method A5: ShrinkTheWeb",
+          "success": false,
+          "error": "Hostname/IP does not match certificate's altnames: Host: images.shrinktheweb.com. is not in the cert's altnames: DNS:gvam1289.siteground.biz"
+        },
+        {
+          "method": "Method A6: Web2PDFConvert Screenshot",
+          "success": false,
+          "error": "HTTP 403: Forbidden"
+        },
+        {
+          "method": "Method A7: Capture Website",
+          "success": false,
+          "error": "HTTP 401: UNAUTHORIZED"
+        },
+        {
+          "method": "Method A8: Screenshot Layer",
+          "success": false,
+          "error": "File too small and invalid: 194 bytes",
+          "url": "https://api.screenshotlayer.com/api/capture?access_key=demo&url=https%3A%2F%2Farxiv.org%2Fpdf%2F2506.17218v1.pdf&format=PNG&viewport=1200x1600"
+        },
+        {
+          "method": "Method A9: PDFShift Screenshot",
+          "success": false,
+          "error": "HTTP 405: Method Not Allowed"
+        },
+        {
+          "method": "Method A10: ArXiv Abstract Page Screenshot",
+          "success": false,
+          "error": "HTTP 403: Forbidden"
+        },
+        {
+          "method": "Method A11: PDF Thumbnail via Mozilla PDF.js Direct",
+          "success": false,
+          "error": "Server-side implementation needed or not applicable"
+        },
+        {
+          "method": "Method A12: WeasyPrint HTML to PNG",
+          "success": false,
+          "error": "HTTP 404: Not Found"
+        }
+      ]
+    }
+  ]
+}

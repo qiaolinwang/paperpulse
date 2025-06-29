@@ -26,6 +26,15 @@ class ArxivClient:
             elif keyword.lower() == "large language model":
                 # Search for LLM papers with variations
                 search_query = f'(ti:"language model" OR ti:"LLM" OR ti:"transformer" OR abs:"language model" OR abs:"LLM")'
+            elif keyword.lower() == "emotion recognition":
+                # Search for emotion recognition papers
+                search_query = f'(ti:"emotion recognition" OR ti:"emotion detection" OR ti:"affective computing" OR abs:"emotion recognition" OR abs:"emotion detection" OR abs:"affective computing")'
+            elif keyword.lower() == "text to speech" or keyword.lower() == "speech synthesis":
+                # Search for TTS and speech synthesis papers
+                search_query = f'(ti:"text to speech" OR ti:"TTS" OR ti:"speech synthesis" OR ti:"voice synthesis" OR abs:"text to speech" OR abs:"TTS" OR abs:"speech synthesis")'
+            elif keyword.lower() == "audio llm":
+                # Search for audio language model papers
+                search_query = f'(ti:"audio language model" OR ti:"audio LLM" OR ti:"speech language model" OR ti:"audio understanding" OR abs:"audio language model" OR abs:"audio LLM" OR abs:"speech understanding")'
             elif " " in keyword:
                 # For other multi-word keywords, use both exact and flexible matching
                 words = keyword.split()

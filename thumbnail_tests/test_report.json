@@ -1,0 +1,294 @@
+{
+  "testDate": "2025-06-23T22:56:42.359Z",
+  "summary": {
+    "totalPapers": 3,
+    "totalMethods": 12,
+    "methodSuccessRates": {
+      "Method 1: PDF.js Web Viewer": {
+        "successes": 0,
+        "total": 3,
+        "rate": "0.0"
+      },
+      "Method 2: Google Docs Embedded Viewer": {
+        "successes": 0,
+        "total": 3,
+        "rate": "0.0"
+      },
+      "Method 3: Direct PDF Screenshot (s-shot)": {
+        "successes": 0,
+        "total": 3,
+        "rate": "0.0"
+      },
+      "Method 4: Thum.io with Delay": {
+        "successes": 0,
+        "total": 3,
+        "rate": "0.0"
+      },
+      "Method 5: ScreenshotMachine": {
+        "successes": 3,
+        "total": 3,
+        "rate": "100.0"
+      },
+      "Method 6: Htmlcsstoimage": {
+        "successes": 0,
+        "total": 3,
+        "rate": "0.0"
+      },
+      "Method 7: Microlink Screenshot": {
+        "successes": 2,
+        "total": 3,
+        "rate": "66.7"
+      },
+      "Method 8: PagePeeker": {
+        "successes": 0,
+        "total": 3,
+        "rate": "0.0"
+      },
+      "Method 9: WebThumb": {
+        "successes": 0,
+        "total": 3,
+        "rate": "0.0"
+      },
+      "Method 10: Urlbox": {
+        "successes": 0,
+        "total": 3,
+        "rate": "0.0"
+      },
+      "Method 11: ArXiv Native (if exists)": {
+        "successes": 0,
+        "total": 3,
+        "rate": "0.0"
+      },
+      "Method 12: Chrome Headless via Browserless": {
+        "successes": 0,
+        "total": 3,
+        "rate": "0.0"
+      }
+    }
+  },
+  "detailedResults": [
+    {
+      "paper": {
+        "id": "2506.17218v1",
+        "title": "Machine Mental Imagery: Empower Multimodal Reasoning with Latent Visual Tokens",
+        "pdf_url": "https://arxiv.org/pdf/2506.17218v1.pdf"
+      },
+      "methodResults": [
+        {
+          "method": "Method 1: PDF.js Web Viewer",
+          "success": false,
+          "error": "HTTP 403: Forbidden"
+        },
+        {
+          "method": "Method 2: Google Docs Embedded Viewer",
+          "success": false,
+          "error": "HTTP 403: Forbidden"
+        },
+        {
+          "method": "Method 3: Direct PDF Screenshot (s-shot)",
+          "success": false,
+          "error": "HTTP 403: Forbidden"
+        },
+        {
+          "method": "Method 4: Thum.io with Delay",
+          "success": false,
+          "error": "HTTP 400: "
+        },
+        {
+          "method": "Method 5: ScreenshotMachine",
+          "success": true,
+          "fileSize": 6402,
+          "contentType": "image/gif",
+          "url": "https://api.screenshotmachine.com/?key=demo&url=https%3A%2F%2Farxiv.org%2Fpdf%2F2506.17218v1.pdf&dimension=1024x768&format=png",
+          "savedAs": "2506.17218v1_Method_5__ScreenshotMachine.png"
+        },
+        {
+          "method": "Method 6: Htmlcsstoimage",
+          "success": false,
+          "error": "HTTP 500: Internal Server Error"
+        },
+        {
+          "method": "Method 7: Microlink Screenshot",
+          "success": true,
+          "fileSize": 18325,
+          "contentType": "application/json; charset=utf-8",
+          "url": "https://api.microlink.io/screenshot?url=https%3A%2F%2Farxiv.org%2Fpdf%2F2506.17218v1.pdf&type=png&viewport.width=800&viewport.height=1000",
+          "savedAs": "2506.17218v1_Method_7__Microlink_Screenshot.png"
+        },
+        {
+          "method": "Method 8: PagePeeker",
+          "success": false,
+          "error": "HTTP 302: Moved Temporarily"
+        },
+        {
+          "method": "Method 9: WebThumb",
+          "success": false,
+          "error": "Request timeout"
+        },
+        {
+          "method": "Method 10: Urlbox",
+          "success": false,
+          "error": "HTTP 401: Unauthorized"
+        },
+        {
+          "method": "Method 11: ArXiv Native (if exists)",
+          "success": false,
+          "error": "HTTP 404: Not Found"
+        },
+        {
+          "method": "Method 12: Chrome Headless via Browserless",
+          "success": false,
+          "error": "HTTP 401: Unauthorized"
+        }
+      ]
+    },
+    {
+      "paper": {
+        "id": "2506.17219v1",
+        "title": "Test Paper 2",
+        "pdf_url": "https://arxiv.org/pdf/2506.17219v1.pdf"
+      },
+      "methodResults": [
+        {
+          "method": "Method 1: PDF.js Web Viewer",
+          "success": false,
+          "error": "HTTP 403: Forbidden"
+        },
+        {
+          "method": "Method 2: Google Docs Embedded Viewer",
+          "success": false,
+          "error": "HTTP 403: Forbidden"
+        },
+        {
+          "method": "Method 3: Direct PDF Screenshot (s-shot)",
+          "success": false,
+          "error": "HTTP 403: Forbidden"
+        },
+        {
+          "method": "Method 4: Thum.io with Delay",
+          "success": false,
+          "error": "HTTP 400: "
+        },
+        {
+          "method": "Method 5: ScreenshotMachine",
+          "success": true,
+          "fileSize": 6402,
+          "contentType": "image/gif",
+          "url": "https://api.screenshotmachine.com/?key=demo&url=https%3A%2F%2Farxiv.org%2Fpdf%2F2506.17219v1.pdf&dimension=1024x768&format=png",
+          "savedAs": "2506.17219v1_Method_5__ScreenshotMachine.png"
+        },
+        {
+          "method": "Method 6: Htmlcsstoimage",
+          "success": false,
+          "error": "HTTP 500: Internal Server Error"
+        },
+        {
+          "method": "Method 7: Microlink Screenshot",
+          "success": true,
+          "fileSize": 32153,
+          "contentType": "application/json; charset=utf-8",
+          "url": "https://api.microlink.io/screenshot?url=https%3A%2F%2Farxiv.org%2Fpdf%2F2506.17219v1.pdf&type=png&viewport.width=800&viewport.height=1000",
+          "savedAs": "2506.17219v1_Method_7__Microlink_Screenshot.png"
+        },
+        {
+          "method": "Method 8: PagePeeker",
+          "success": false,
+          "error": "HTTP 302: Moved Temporarily"
+        },
+        {
+          "method": "Method 9: WebThumb",
+          "success": false,
+          "error": "Request timeout"
+        },
+        {
+          "method": "Method 10: Urlbox",
+          "success": false,
+          "error": "HTTP 401: Unauthorized"
+        },
+        {
+          "method": "Method 11: ArXiv Native (if exists)",
+          "success": false,
+          "error": "HTTP 404: Not Found"
+        },
+        {
+          "method": "Method 12: Chrome Headless via Browserless",
+          "success": false,
+          "error": "HTTP 401: Unauthorized"
+        }
+      ]
+    },
+    {
+      "paper": {
+        "id": "2506.17220v1",
+        "title": "Test Paper 3",
+        "pdf_url": "https://arxiv.org/pdf/2506.17220v1.pdf"
+      },
+      "methodResults": [
+        {
+          "method": "Method 1: PDF.js Web Viewer",
+          "success": false,
+          "error": "HTTP 403: Forbidden"
+        },
+        {
+          "method": "Method 2: Google Docs Embedded Viewer",
+          "success": false,
+          "error": "HTTP 403: Forbidden"
+        },
+        {
+          "method": "Method 3: Direct PDF Screenshot (s-shot)",
+          "success": false,
+          "error": "HTTP 403: Forbidden"
+        },
+        {
+          "method": "Method 4: Thum.io with Delay",
+          "success": false,
+          "error": "HTTP 400: "
+        },
+        {
+          "method": "Method 5: ScreenshotMachine",
+          "success": true,
+          "fileSize": 6402,
+          "contentType": "image/gif",
+          "url": "https://api.screenshotmachine.com/?key=demo&url=https%3A%2F%2Farxiv.org%2Fpdf%2F2506.17220v1.pdf&dimension=1024x768&format=png",
+          "savedAs": "2506.17220v1_Method_5__ScreenshotMachine.png"
+        },
+        {
+          "method": "Method 6: Htmlcsstoimage",
+          "success": false,
+          "error": "HTTP 500: Internal Server Error"
+        },
+        {
+          "method": "Method 7: Microlink Screenshot",
+          "success": false,
+          "error": "File too small: 427 bytes",
+          "url": "https://api.microlink.io/screenshot?url=https%3A%2F%2Farxiv.org%2Fpdf%2F2506.17220v1.pdf&type=png&viewport.width=800&viewport.height=1000"
+        },
+        {
+          "method": "Method 8: PagePeeker",
+          "success": false,
+          "error": "HTTP 302: Moved Temporarily"
+        },
+        {
+          "method": "Method 9: WebThumb",
+          "success": false,
+          "error": "Request timeout"
+        },
+        {
+          "method": "Method 10: Urlbox",
+          "success": false,
+          "error": "HTTP 401: Unauthorized"
+        },
+        {
+          "method": "Method 11: ArXiv Native (if exists)",
+          "success": false,
+          "error": "HTTP 404: Not Found"
+        },
+        {
+          "method": "Method 12: Chrome Headless via Browserless",
+          "success": false,
+          "error": "HTTP 401: Unauthorized"
+        }
+      ]
+    }
+  ]
+}

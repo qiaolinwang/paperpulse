@@ -26,7 +26,47 @@ export default function HomePage() {
       }
     }
 
-    checkUser()
+    // Handle OAuth callback
+    const handleOAuthCallback = async () => {
+      const urlParams = new URLSearchParams(window.location.search)
+      const code = urlParams.get('code')
+      
+      if (code) {
+        console.log('OAuth callback detected, processing...')
+        try {
+          // Exchange code for session
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+          if (error) {
+            console.error('OAuth callback error:', error)
+          } else if (data?.user) {
+            console.log('OAuth success, redirecting to dashboard')
+            setUser(data.user)
+            // Clean the URL and redirect
+            window.history.replaceState({}, document.title, window.location.pathname)
+            router.push('/dashboard')
+            return
+          }
+        } catch (error) {
+          console.error('OAuth processing error:', error)
+        }
+      }
+    }
+
+    // Check auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state change:', event, session?.user?.email)
+      if (event === 'SIGNED_IN' && session?.user) {
+        setUser(session.user)
+        router.push('/dashboard')
+      }
+    })
+
+    // Handle OAuth callback first, then check user
+    handleOAuthCallback().then(() => {
+      checkUser()
+    })
+
+    return () => subscription.unsubscribe()
   }, [router, supabase.auth])
 
   const handleSubscribe = async (e: React.FormEvent) => {
@@ -69,7 +109,7 @@ export default function HomePage() {
             </div>
             <h2 className="text-2xl font-bold mb-2">Welcome to PaperPulse! 🎉</h2>
             <p className="text-muted-foreground mb-4">
-              Check your email to confirm your subscription. You'll start receiving daily digests soon!
+              Check your email to confirm your subscription. You&apos;ll start receiving daily digests soon!
             </p>
             <Button onClick={() => setSubscribed(false)} variant="outline">
               Subscribe Another Email
@@ -233,7 +273,7 @@ export default function HomePage() {
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground">
-                Direct access to the world's largest repository of research papers.
+                Direct access to the world&apos;s largest repository of research papers.
               </p>
             </CardContent>
           </Card>

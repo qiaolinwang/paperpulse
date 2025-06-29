@@ -24,6 +24,7 @@ import {
   Mail
 } from 'lucide-react'
 import { Paper, User } from '@/lib/auth'
+import PaperFigures from '@/components/paper/PaperFigures'
 
 interface ExtendedPaper extends Paper {
   detailed_analysis?: {
@@ -31,8 +32,11 @@ interface ExtendedPaper extends Paper {
     key_contributions: string[]
     methodology: string
     results: string
+    technical_approach: string
+    significance: string
     limitations: string
     technical_difficulty: number
+    target_audience: string
   }
 }
 
@@ -40,6 +44,9 @@ export default function PaperDetailPage({ params }: { params: { id: string } }) 
   const [user, setUser] = useState<User | null>(null)
   const [paper, setPaper] = useState<ExtendedPaper | null>(null)
   const [loading, setLoading] = useState(true)
+  const [analysisLoading, setAnalysisLoading] = useState(false)
+  const [parseLoading, setParseLoading] = useState(false)
+  const [paperStructure, setPaperStructure] = useState<any>(null)
   const [isBookmarked, setIsBookmarked] = useState(false)
   const [userRating, setUserRating] = useState<number | null>(null)
   const router = useRouter()
@@ -65,7 +72,12 @@ export default function PaperDetailPage({ params }: { params: { id: string } }) 
           .single()
 
         if (dbPaper && !error) {
+          console.log('Paper found in database:', dbPaper.id)
           setPaper(dbPaper)
+          // Generate detailed analysis
+          generateDetailedAnalysis(dbPaper)
+          // Parse paper structure
+          parsePaperStructure(dbPaper)
         } else {
           // Fallback to digest files - try multiple days
           const last7Days = []
@@ -92,23 +104,12 @@ export default function PaperDetailPage({ params }: { params: { id: string } }) 
           }
           
           if (foundPaper) {
-            // Simulate detailed analysis for demo
-            const enhancedPaper: ExtendedPaper = {
-              ...foundPaper,
-              detailed_analysis: {
-                executive_summary: foundPaper.summary || "This paper presents novel research with significant implications for the field.",
-                key_contributions: [
-                  "Novel approach to existing problem",
-                  "Improved performance over baseline methods", 
-                  "Comprehensive experimental validation"
-                ],
-                methodology: "The authors employed a systematic approach combining theoretical analysis with empirical validation.",
-                results: "The proposed method achieves state-of-the-art performance across multiple benchmarks.",
-                limitations: "The study is limited to specific domains and requires further validation on diverse datasets.",
-                technical_difficulty: Math.floor(Math.random() * 5) + 1
-              }
-            }
-            setPaper(enhancedPaper)
+            console.log('Paper found in digest files:', foundPaper.id)
+            setPaper(foundPaper)
+            // Generate detailed analysis
+            generateDetailedAnalysis(foundPaper)
+            // Parse paper structure
+            parsePaperStructure(foundPaper)
           } else {
             console.error(`Paper with ID ${params.id} not found in any digest`)
           }
@@ -122,6 +123,66 @@ export default function PaperDetailPage({ params }: { params: { id: string } }) 
 
     fetchPaper()
   }, [params.id, supabase])
+
+  const generateDetailedAnalysis = async (paperData: Paper) => {
+    try {
+      setAnalysisLoading(true)
+      const response = await fetch('/api/paper/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: paperData.title,
+          abstract: paperData.abstract,
+          authors: paperData.authors,
+          categories: paperData.categories,
+          paperId: paperData.id
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setPaper(prev => prev ? {
+          ...prev,
+          detailed_analysis: data.detailed_analysis
+        } : null)
+      }
+    } catch (error) {
+      console.error('Error generating detailed analysis:', error)
+    } finally {
+      setAnalysisLoading(false)
+    }
+  }
+
+  const parsePaperStructure = async (paperData: Paper) => {
+    try {
+      console.log('Starting PDF parsing for paper:', paperData.id)
+      setParseLoading(true)
+      const response = await fetch('/api/paper/parse', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          paperId: paperData.id,
+          pdfUrl: paperData.pdf_url
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Paper structure parsed:', data)
+        setPaperStructure(data)
+      } else {
+        console.error('Paper parsing failed:', response.status, response.statusText)
+      }
+    } catch (error) {
+      console.error('Error parsing paper structure:', error)
+    } finally {
+      setParseLoading(false)
+    }
+  }
 
   useEffect(() => {
     const fetchUserInteraction = async () => {
@@ -146,34 +207,71 @@ export default function PaperDetailPage({ params }: { params: { id: string } }) 
   const toggleBookmark = async () => {
     if (!user || !paper) return
 
-    const { error } = await supabase
-      .from('user_papers')
-      .upsert({
-        user_id: user.id,
-        paper_id: paper.id,
-        bookmarked: !isBookmarked,
-        rating: userRating
-      })
+    try {
+      if (isBookmarked) {
+        // Remove bookmark by setting bookmarked to false
+        const { error } = await supabase
+          .from('user_papers')
+          .upsert({
+            user_id: user.id,
+            paper_id: paper.id,
+            bookmarked: false,
+            rating: userRating
+          }, {
+            onConflict: 'user_id,paper_id'
+          })
 
-    if (!error) {
-      setIsBookmarked(!isBookmarked)
+        if (!error) {
+          setIsBookmarked(false)
+        } else {
+          console.error('Error removing bookmark:', error)
+        }
+      } else {
+        // Add bookmark
+        const { error } = await supabase
+          .from('user_papers')
+          .upsert({
+            user_id: user.id,
+            paper_id: paper.id,
+            bookmarked: true,
+            rating: userRating
+          }, {
+            onConflict: 'user_id,paper_id'
+          })
+
+        if (!error) {
+          setIsBookmarked(true)
+        } else {
+          console.error('Error adding bookmark:', error)
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling bookmark:', error)
     }
   }
 
   const setRating = async (rating: number) => {
     if (!user || !paper) return
 
-    const { error } = await supabase
-      .from('user_papers')
-      .upsert({
-        user_id: user.id,
-        paper_id: paper.id,
-        bookmarked: isBookmarked,
-        rating: rating
-      })
+    try {
+      const { error } = await supabase
+        .from('user_papers')
+        .upsert({
+          user_id: user.id,
+          paper_id: paper.id,
+          bookmarked: isBookmarked,
+          rating: rating
+        }, {
+          onConflict: 'user_id,paper_id'
+        })
 
-    if (!error) {
-      setUserRating(rating)
+      if (!error) {
+        setUserRating(rating)
+      } else {
+        console.error('Error setting rating:', error)
+      }
+    } catch (error) {
+      console.error('Error setting rating:', error)
     }
   }
 
@@ -346,18 +444,24 @@ export default function PaperDetailPage({ params }: { params: { id: string } }) 
         </div>
 
         {/* AI Analysis Section */}
-        {paper.detailed_analysis && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-purple-600 rounded-full animate-pulse"></div>
-                AI Analysis
-              </CardTitle>
-              <CardDescription>
-                Comprehensive analysis generated by Claude AI
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${analysisLoading ? 'bg-purple-600 animate-pulse' : 'bg-green-600'}`}></div>
+              AI-Powered Paper Analysis
+            </CardTitle>
+            <CardDescription>
+              Comprehensive analysis generated by Llama 3.1 via Groq API
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {analysisLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mr-4"></div>
+                <span className="text-muted-foreground">Generating detailed analysis...</span>
+              </div>
+            ) : paper.detailed_analysis ? (
+              <>
               {/* Executive Summary */}
               <div>
                 <h3 className="font-semibold mb-2">Executive Summary</h3>
@@ -392,9 +496,25 @@ export default function PaperDetailPage({ params }: { params: { id: string } }) 
                 </p>
               </div>
 
+              {/* Technical Approach */}
+              <div>
+                <h3 className="font-semibold mb-2">Technical Approach</h3>
+                <p className="text-muted-foreground">
+                  {paper.detailed_analysis.technical_approach}
+                </p>
+              </div>
+
+              {/* Significance */}
+              <div>
+                <h3 className="font-semibold mb-2">Significance & Impact</h3>
+                <p className="text-muted-foreground">
+                  {paper.detailed_analysis.significance}
+                </p>
+              </div>
+
               {/* Limitations */}
               <div>
-                <h3 className="font-semibold mb-2">Limitations</h3>
+                <h3 className="font-semibold mb-2">Limitations & Future Work</h3>
                 <p className="text-muted-foreground">
                   {paper.detailed_analysis.limitations}
                 </p>
@@ -403,7 +523,7 @@ export default function PaperDetailPage({ params }: { params: { id: string } }) 
               {/* Technical Difficulty */}
               <div>
                 <h3 className="font-semibold mb-2">Technical Difficulty</h3>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-4">
                   <div className="flex gap-1">
                     {[1, 2, 3, 4, 5].map((level) => (
                       <div
@@ -419,11 +539,36 @@ export default function PaperDetailPage({ params }: { params: { id: string } }) 
                   <span className="text-sm text-muted-foreground">
                     {paper.detailed_analysis.technical_difficulty}/5
                   </span>
+                  <span className="text-xs text-muted-foreground">
+                    {paper.detailed_analysis.technical_difficulty <= 2 ? 'Beginner' :
+                     paper.detailed_analysis.technical_difficulty <= 3 ? 'Intermediate' :
+                     paper.detailed_analysis.technical_difficulty <= 4 ? 'Advanced' : 'Expert'}
+                  </span>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        )}
+
+              {/* Target Audience */}
+              <div>
+                <h3 className="font-semibold mb-2">Target Audience</h3>
+                <p className="text-muted-foreground">
+                  {paper.detailed_analysis.target_audience}
+                </p>
+              </div>
+              </>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground mb-4">Detailed analysis not available.</p>
+                <Button 
+                  onClick={() => generateDetailedAnalysis(paper)}
+                  className="flex items-center gap-2"
+                >
+                  <div className="w-2 h-2 bg-purple-600 rounded-full animate-pulse"></div>
+                  Generate Analysis
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Abstract Section */}
         <Card className="mb-8">
@@ -436,6 +581,15 @@ export default function PaperDetailPage({ params }: { params: { id: string } }) 
             </p>
           </CardContent>
         </Card>
+
+        {/* Figures & Tables */}
+        <div className="mb-8">
+          <PaperFigures 
+            paperId={paper.id} 
+            figures={paperStructure?.figures}
+            loading={parseLoading}
+          />
+        </div>
 
         {/* Quick Summary */}
         {paper.summary && (

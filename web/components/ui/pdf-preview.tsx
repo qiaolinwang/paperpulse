@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
+import { PDFCanvasRenderer } from './pdf-canvas-renderer'
 
 interface PDFPreviewProps {
   pdfUrl: string
@@ -13,6 +14,7 @@ export function PDFPreview({ pdfUrl, title, className = '' }: PDFPreviewProps) {
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const [useClientSideRender, setUseClientSideRender] = useState(false)
 
   // 清理并获取正确的PDF URL
   const cleanPdfUrl = pdfUrl.endsWith('.pdf') ? pdfUrl.slice(0, -4) : pdfUrl
@@ -22,20 +24,37 @@ export function PDFPreview({ pdfUrl, title, className = '' }: PDFPreviewProps) {
       try {
         console.log('Generating thumbnail for:', cleanPdfUrl)
         
-        // 调用我们的API来生成PDF缩略图
-        const response = await fetch(`/api/pdf-thumbnail?url=${encodeURIComponent(cleanPdfUrl)}`)
-        const data = await response.json()
+        // Try multiple thumbnail generation methods in order of preference
+        const methods = [
+          '/api/pdf-screenshot-simple', // Simple PDF screenshot method (most reliable)
+          '/api/pdf-server-render',    // Advanced server-side PDF screenshot method  
+          '/api/pdf-to-image',         // Alternative PDF screenshot method
+          '/api/pdf-thumbnail-server', // Enhanced server-side method
+          '/api/pdf-thumbnail-v2',     // Enhanced v2 method
+          '/api/pdf-thumbnail'         // Original fallback method
+        ]
         
-        if (data.success && data.thumbnailUrl) {
-          // 对于screenshot服务，直接使用URL，因为验证可能会因为CORS或延迟失败
-          console.log('Using thumbnail URL:', data.thumbnailUrl)
-          setThumbnailUrl(data.thumbnailUrl)
-          setLoading(false)
-          return
+        for (const method of methods) {
+          try {
+            console.log(`Trying method: ${method}`)
+            const response = await fetch(`${method}?url=${encodeURIComponent(cleanPdfUrl)}`)
+            const data = await response.json()
+            
+            if (data.success && data.thumbnailUrl) {
+              console.log(`Success with ${method}:`, data.thumbnailUrl)
+              setThumbnailUrl(data.thumbnailUrl)
+              setLoading(false)
+              return
+            }
+          } catch (methodError) {
+            console.log(`Method ${method} failed:`, methodError)
+            continue
+          }
         }
         
-        // 如果API失败，回退到智能占位符
-        setError(true)
+        // Try client-side PDF rendering as final real screenshot method
+        console.log('All server methods failed, trying client-side PDF rendering')
+        setUseClientSideRender(true)
         setLoading(false)
         
       } catch (err) {
@@ -59,6 +78,22 @@ export function PDFPreview({ pdfUrl, title, className = '' }: PDFPreviewProps) {
           </div>
         </div>
       </div>
+    )
+  }
+
+  // Use client-side PDF rendering if server methods failed
+  if (useClientSideRender) {
+    return (
+      <PDFCanvasRenderer 
+        pdfUrl={cleanPdfUrl}
+        title={title}
+        className={className}
+        onImageGenerated={(imageDataUrl) => {
+          // Store the generated image for future use
+          setThumbnailUrl(imageDataUrl)
+          setUseClientSideRender(false)
+        }}
+      />
     )
   }
 

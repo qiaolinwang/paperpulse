@@ -40,6 +40,7 @@ export default function DashboardPage() {
   const [digests, setDigests] = useState<Record<string, DigestData>>({})
   const [selectedDate, setSelectedDate] = useState('')
   const [userPapers, setUserPapers] = useState<Record<string, any>>({})
+  const [starredPapers, setStarredPapers] = useState<Paper[]>([])
   const router = useRouter()
   const supabase = createClient()
 
@@ -134,7 +135,28 @@ export default function DashboardPage() {
       }
     }
 
+    const fetchStarredPapers = async () => {
+      if (!user) return
+
+      const { data, error } = await supabase
+        .from('user_papers')
+        .select(`
+          paper_id,
+          papers (*)
+        `)
+        .eq('user_id', user.id)
+        .eq('bookmarked', true)
+
+      if (!error && data) {
+        const starred = data
+          .filter((item: any) => item.papers)
+          .map((item: any) => item.papers as Paper)
+        setStarredPapers(starred)
+      }
+    }
+
     fetchUserPapers()
+    fetchStarredPapers()
   }, [user, supabase])
 
   const formatDate = (dateString: string) => {
@@ -173,35 +195,60 @@ export default function DashboardPage() {
 
     const isBookmarked = userPapers[paperId]?.bookmarked || false
     
-    if (isBookmarked) {
-      // Remove bookmark
-      const { error } = await supabase
-        .from('user_papers')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('paper_id', paperId)
-      
-      if (!error) {
-        const newUserPapers = { ...userPapers }
-        delete newUserPapers[paperId]
-        setUserPapers(newUserPapers)
+    try {
+      if (isBookmarked) {
+        // Set bookmark to false instead of deleting
+        const { error } = await supabase
+          .from('user_papers')
+          .upsert({
+            user_id: user.id,
+            paper_id: paperId,
+            bookmarked: false
+          }, {
+            onConflict: 'user_id,paper_id'
+          })
+        
+        if (!error) {
+          const newUserPapers = { ...userPapers }
+          if (newUserPapers[paperId]) {
+            newUserPapers[paperId].bookmarked = false
+          }
+          setUserPapers(newUserPapers)
+          
+          // Also remove from starred papers list
+          setStarredPapers(starredPapers.filter(p => p.id !== paperId))
+        } else {
+          console.error('Error removing bookmark:', error)
+        }
+      } else {
+        // Add bookmark
+        const { error } = await supabase
+          .from('user_papers')
+          .upsert({
+            user_id: user.id,
+            paper_id: paperId,
+            bookmarked: true
+          }, {
+            onConflict: 'user_id,paper_id'
+          })
+        
+        if (!error) {
+          setUserPapers({
+            ...userPapers,
+            [paperId]: { ...userPapers[paperId], bookmarked: true }
+          })
+          
+          // Also update starred papers list
+          const paper = Object.values(digests).flatMap(d => d.papers).find(p => p.id === paperId)
+          if (paper && !starredPapers.find(p => p.id === paperId)) {
+            setStarredPapers([...starredPapers, paper])
+          }
+        } else {
+          console.error('Error adding bookmark:', error)
+        }
       }
-    } else {
-      // Add bookmark
-      const { error } = await supabase
-        .from('user_papers')
-        .upsert({
-          user_id: user.id,
-          paper_id: paperId,
-          bookmarked: true
-        })
-      
-      if (!error) {
-        setUserPapers({
-          ...userPapers,
-          [paperId]: { ...userPapers[paperId], bookmarked: true }
-        })
-      }
+    } catch (error) {
+      console.error('Error toggling bookmark:', error)
     }
   }
 
@@ -263,6 +310,37 @@ export default function DashboardPage() {
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Left Navigation */}
           <div className="lg:w-80 space-y-3">
+            {/* Starred Section */}
+            <button
+              onClick={() => setSelectedDate('starred')}
+              className={`w-full p-4 rounded-xl border text-left transition-all ${
+                selectedDate === 'starred'
+                  ? 'bg-purple-50 border-purple-200 shadow-md dark:bg-purple-900/20 dark:border-purple-700' 
+                  : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Star className={`w-4 h-4 ${selectedDate === 'starred' ? 'text-purple-600 fill-purple-600' : 'text-gray-500'}`} />
+                  <div className={`font-semibold ${selectedDate === 'starred' ? 'text-purple-900 dark:text-purple-200' : 'text-gray-900 dark:text-gray-100'}`}>
+                    Starred
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {starredPapers.length > 0 ? (
+                    <Badge 
+                      variant={selectedDate === 'starred' ? "default" : "secondary"}
+                      className={selectedDate === 'starred' ? 'bg-purple-600 text-white' : ''}
+                    >
+                      {starredPapers.length}
+                    </Badge>
+                  ) : (
+                    <span className="text-xs text-gray-400 dark:text-gray-500">No papers</span>
+                  )}
+                </div>
+              </div>
+            </button>
+            
             {last7Days.map(date => {
               const isSelected = selectedDate === date
               const paperCount = digests[date]?.papers.length || 0
@@ -321,17 +399,116 @@ export default function DashboardPage() {
             <Tabs value={selectedDate} onValueChange={setSelectedDate} className="w-full">
               <div className="mb-6">
                 <h2 className="text-2xl font-bold mb-2">
-                  {formatDate(selectedDate)} Papers
+                  {selectedDate === 'starred' ? 'Starred Papers' : `${formatDate(selectedDate)} Papers`}
                 </h2>
                 <p className="text-muted-foreground">
-                  {digests[selectedDate] 
-                    ? `${digests[selectedDate].papers.length} papers sent to you` 
-                    : 'No personalized digest for this date'
+                  {selectedDate === 'starred' 
+                    ? `${starredPapers.length} papers you've starred` 
+                    : digests[selectedDate] 
+                      ? `${digests[selectedDate].papers.length} papers sent to you` 
+                      : 'No personalized digest for this date'
                   }
                 </p>
               </div>
 
           {/* Paper Grid Content */}
+          {/* Starred Papers Tab */}
+          <TabsContent key="starred" value="starred" className="space-y-6">
+            {starredPapers.length > 0 ? (
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {starredPapers.map((paper) => {
+                  const isBookmarked = true // All starred papers are bookmarked
+                  
+                  return (
+                    <Card key={paper.id} className="group hover:shadow-xl transition-all cursor-pointer">
+                      {/* Paper Preview/Thumbnail */}
+                      <div className="aspect-[4/3] bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-t-lg flex items-center justify-center relative overflow-hidden">
+                        {/* Real PDF Preview */}
+                        <PDFPreview 
+                          pdfUrl={paper.pdf_url || paper.url.replace('/abs/', '/pdf/') + '.pdf'}
+                          title={paper.title}
+                          className="w-full h-full"
+                        />
+                        
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 hover:bg-white/90 backdrop-blur z-20"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleBookmark(paper.id)
+                          }}
+                        >
+                          {isBookmarked ? (
+                            <BookmarkCheck className="w-4 h-4 text-purple-600" />
+                          ) : (
+                            <Bookmark className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </div>
+                      
+                      <CardContent className="p-4">
+                        <h3 className="font-semibold text-sm line-clamp-2 mb-2 leading-tight">
+                          {paper.title}
+                        </h3>
+                        <p className="text-xs text-muted-foreground mb-2">
+                          {formatAuthors(paper.authors)}
+                        </p>
+                        
+                        {/* Categories */}
+                        <div className="flex flex-wrap gap-1 mb-3">
+                          {paper.categories.slice(0, 2).map(cat => (
+                            <Badge 
+                              key={cat} 
+                              variant="outline" 
+                              className="text-xs px-1 py-0"
+                            >
+                              {cat.split('.')[0]}
+                            </Badge>
+                          ))}
+                        </div>
+
+                        {/* Summary */}
+                        {paper.summary && (
+                          <p className="text-xs text-muted-foreground mb-3 line-clamp-3">
+                            {paper.summary}
+                          </p>
+                        )}
+
+                        {/* Actions */}
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="flex-1 text-xs"
+                            onClick={() => router.push(`/paper/${paper.id}`)}
+                          >
+                            Read More
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => window.open(paper.url, '_blank')}
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Star className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">No Starred Papers</h3>
+                <p className="text-muted-foreground">
+                  Star papers from your daily digests to collect them here
+                </p>
+              </div>
+            )}
+          </TabsContent>
+          
           {last7Days.map(date => (
             <TabsContent key={date} value={date} className="space-y-6">
               {digests[date] ? (

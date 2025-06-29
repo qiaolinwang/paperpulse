@@ -13,7 +13,7 @@ class SupabaseSubscription:
     email: str
     keywords: List[str]
     digest_time: str = "13:00"
-    max_papers: int = 20
+    max_papers: int = 100
     summary_model: str = "llama-3.1-8b-instant-groq"
     tone: str = "concise"
     include_pdf_link: bool = True
@@ -65,7 +65,7 @@ class SupabaseClient:
                     email=row['email'],
                     keywords=keywords,
                     digest_time=row.get('digest_time', '13:00'),
-                    max_papers=row.get('max_papers', 20),
+                    max_papers=row.get('max_papers', 100),
                     summary_model=row.get('summary_model', 'llama-3.1-8b-instant-groq'),
                     tone=row.get('tone', 'concise'),
                     include_pdf_link=row.get('include_pdf_link', True),
@@ -98,7 +98,10 @@ class SupabaseClient:
                     'url': paper['url'],
                     'pdf_url': paper['pdf_url'],
                     'summary': paper.get('summary'),
-                    'keywords_matched': paper.get('keywords_matched', [])
+                    'keywords_matched': paper.get('keywords_matched', []),
+                    'detailed_analysis': paper.get('detailed_analysis'),
+                    'analysis_generated_at': paper.get('analysis_generated_at'),
+                    'analysis_model': paper.get('analysis_model')
                 }
                 
                 # Add arxiv_id if the column exists
@@ -184,3 +187,71 @@ class SupabaseClient:
         except Exception as e:
             logger.error(f"Failed to get user digest history: {e}")
             return []
+    
+    def generate_paper_analysis(self, paper_id: str) -> Dict:
+        """Generate detailed analysis for a specific paper"""
+        try:
+            # Get paper from database
+            result = self.client.table('papers').select('*').eq('id', paper_id).single().execute()
+            
+            if not result.data:
+                logger.error(f"Paper {paper_id} not found in database")
+                return {}
+            
+            paper = result.data
+            
+            # Check if analysis already exists
+            if paper.get('detailed_analysis'):
+                logger.info(f"Analysis already exists for paper {paper_id}")
+                return paper['detailed_analysis']
+            
+            # Import paper analyzer
+            from .paper_analyzer import generate_paper_analysis
+            
+            # Generate analysis
+            analysis = generate_paper_analysis(
+                title=paper['title'],
+                abstract=paper['abstract'],
+                authors=paper['authors'],
+                categories=paper['categories']
+            )
+            
+            # Save analysis back to database
+            self.client.table('papers').update({
+                'detailed_analysis': analysis,
+                'analysis_generated_at': datetime.now().isoformat(),
+                'analysis_model': 'llama-3.1-8b-instant-groq',
+                'analysis_failed': False
+            }).eq('id', paper_id).execute()
+            
+            logger.info(f"Generated and saved analysis for paper {paper_id}")
+            return analysis
+            
+        except Exception as e:
+            logger.error(f"Failed to generate analysis for paper {paper_id}: {e}")
+            
+            # Mark analysis as failed
+            try:
+                self.client.table('papers').update({
+                    'analysis_failed': True,
+                    'analysis_generated_at': datetime.now().isoformat()
+                }).eq('id', paper_id).execute()
+            except:
+                pass
+            
+            return {}
+    
+    def get_paper_with_analysis(self, paper_id: str) -> Optional[Dict]:
+        """Get paper with detailed analysis from database"""
+        try:
+            result = self.client.table('papers').select('*').eq('id', paper_id).single().execute()
+            
+            if result.data:
+                return result.data
+            else:
+                logger.warning(f"Paper {paper_id} not found in database")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Failed to get paper {paper_id}: {e}")
+            return None

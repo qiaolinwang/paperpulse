@@ -1,11 +1,11 @@
 -- Temporarily reduce keywords to test if the issue is too many API calls
 
--- Reduce to just 3 high-yield keywords for testing
+-- Update to use the exact keywords that work in our local test
 UPDATE subscriptions 
 SET keywords = '[
+    "Speech LLM",
     "Chain of Thought",
-    "Multimodal LLM", 
-    "large language model"
+    "Multimodal LLM"
 ]'::jsonb
 WHERE email = 'qw2443@columbia.edu';
 

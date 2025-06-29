@@ -9,6 +9,12 @@
     },
     "app/api/unsubscribe/route.ts": {
       "maxDuration": 10
+    },
+    "app/api/paper/parse/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/paper/parse-professional/route.ts": {
+      "maxDuration": 30
     }
   },
   "headers": [

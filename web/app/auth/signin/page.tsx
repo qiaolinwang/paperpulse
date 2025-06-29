@@ -67,7 +67,7 @@ export default function SignInPage() {
                 },
               }}
               providers={['google']}
-              redirectTo={`${(process.env.NEXT_PUBLIC_BASE_URL || 'https://paperpulse-mu.vercel.app').replace(/\/$/, '')}/dashboard`}
+              redirectTo={typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : '/auth/callback'}
               showLinks={true}
               magicLink={true}
               view="sign_in"
