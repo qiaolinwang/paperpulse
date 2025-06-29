@@ -4,16 +4,16 @@
   "installCommand": "cd web && npm install",
   "framework": "nextjs",
   "functions": {
-    "web/app/api/subscribe/route.ts": {
+    "app/api/subscribe/route.ts": {
       "maxDuration": 10
     },
-    "web/app/api/unsubscribe/route.ts": {
+    "app/api/unsubscribe/route.ts": {
       "maxDuration": 10
     },
-    "web/app/api/paper/parse/route.ts": {
+    "app/api/paper/parse/route.ts": {
       "maxDuration": 30
     },
-    "web/app/api/paper/parse-professional/route.ts": {
+    "app/api/paper/parse-professional/route.ts": {
       "maxDuration": 30
     }
   },
