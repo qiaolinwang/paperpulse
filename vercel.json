@@ -1,0 +1,31 @@
+{
+  "buildCommand": "cd web && npm run build",
+  "outputDirectory": "web/.next",
+  "installCommand": "cd web && npm install",
+  "framework": "nextjs",
+  "functions": {
+    "web/app/api/subscribe/route.ts": {
+      "maxDuration": 10
+    },
+    "web/app/api/unsubscribe/route.ts": {
+      "maxDuration": 10
+    },
+    "web/app/api/paper/parse/route.ts": {
+      "maxDuration": 30
+    },
+    "web/app/api/paper/parse-professional/route.ts": {
+      "maxDuration": 30
+    }
+  },
+  "headers": [
+    {
+      "source": "/static/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400"
+        }
+      ]
+    }
+  ]
+} 
