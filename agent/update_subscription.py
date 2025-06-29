@@ -26,7 +26,6 @@ def update_subscription():
     # New keywords including the additions
     new_keywords = [
         "Chain of Thought",
-        "Multimodal LLM", 
         "large language model",
         "emotion recognition",
         "text to speech",

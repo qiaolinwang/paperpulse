@@ -23,7 +23,7 @@ env:
   
   # Agent Configuration
   DIGEST_OUTPUT_DIR: ../web/public/static/digests
-  MAX_PAPERS_PER_KEYWORD: 100
+  MAX_PAPERS_PER_KEYWORD: 50
   DEFAULT_SUMMARY_MODEL: llama-3.1-8b-instant-groq
 
 jobs:
