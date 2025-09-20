@@ -22,9 +22,9 @@ env:
   ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
   
    # Agent Configuration
-   DIGEST_OUTPUT_DIR: ../web/public/static/digests
-   MAX_PAPERS_PER_KEYWORD: 500
-   DEFAULT_SUMMARY_MODEL: llama-3.1-8b-instant-groq
+  DIGEST_OUTPUT_DIR: ../web/public/static/digests
+  MAX_PAPERS_PER_KEYWORD: 500
+  DEFAULT_SUMMARY_MODEL: llama-3.1-8b-instant-groq
 
 jobs:
   send-digest:
