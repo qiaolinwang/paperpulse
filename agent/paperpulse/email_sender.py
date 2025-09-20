@@ -92,7 +92,7 @@ EMAIL_TEMPLATE = """<!DOCTYPE html>
                 By {{ paper.authors[:3] | join(", ") }}{% if paper.authors|length > 3 %} et al.{% endif %} • 
                 {{ paper.published[:10] }}
             </div>
-            <div class="paper-summary">{{ paper.summary }}</div>
+            <div class="paper-summary">{{ paper.abstract }}</div>
             <div class="paper-links">
                 <a href="{{ paper.url }}">View on arXiv</a>
                 {% if include_pdf_link %}

@@ -160,11 +160,12 @@ class PaperPulseAgent:
                     success=True
                 )
             
-            all_papers = self.summarize_papers(
-                all_papers, 
-                subscriber.summary_model, 
-                subscriber.tone
-            )
+            # Skip AI summarization - use original abstracts instead
+            # all_papers = self.summarize_papers(
+            #     all_papers, 
+            #     subscriber.summary_model, 
+            #     subscriber.tone
+            # )
             
             success = self.email_sender.send_digest(
                 to_email=subscriber.email,
