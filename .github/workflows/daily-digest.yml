@@ -1,18 +1,35 @@
-name: Daily Paper Digest
+name: PaperPulse Agent Daily Run
 
 on:
   schedule:
-    # Run daily at 13:00 UTC (8 AM EST, 1 PM GMT)
-    - cron: '0 13 * * *'
+    # Run daily at 5:00 AM UTC (1:00 PM UTC delivery time - 8 hours processing buffer)
+    - cron: '0 5 * * *'
   workflow_dispatch: # Allow manual trigger
 
 env:
-  PYTHON_VERSION: '3.11'
+  # Email Service
+  SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+  FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
+  FROM_NAME: PaperPulse
+  
+  # Supabase Database
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+  
+  # AI Summarization
+  GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  
+  # Agent Configuration
+  DIGEST_OUTPUT_DIR: ../web/public/static/digests
+  MAX_PAPERS_PER_KEYWORD: 50
+  DEFAULT_SUMMARY_MODEL: llama-3.1-8b-instant-groq
 
 jobs:
   send-digest:
     runs-on: ubuntu-latest
-    
+    environment: paperpulse  # Use the paperpulse environment where secrets are stored
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -49,7 +66,7 @@ jobs:
         SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         
         # Agent configuration
-        MAX_PAPERS_PER_KEYWORD: 50
+        MAX_PAPERS_PER_KEYWORD: 150
         DIGEST_OUTPUT_DIR: "../web/public/static/digests"
         
         # Logging
