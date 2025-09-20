@@ -98,22 +98,3 @@ jobs:
             labels: ['bug', 'automation']
           })
 
-  # Optional: Deploy updated digests to web app
-  deploy-digests:
-    needs: send-digest
-    runs-on: ubuntu-latest
-    if: success()
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Deploy to Vercel
-      uses: amondnet/vercel-action@v25
-      if: github.ref == 'refs/heads/main'
-      with:
-        vercel-token: ${{ secrets.VERCEL_TOKEN }}
-        vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-        vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-        working-directory: ./web
-        scope: ${{ secrets.VERCEL_ORG_ID }}
